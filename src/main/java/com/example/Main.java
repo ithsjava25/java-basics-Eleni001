@@ -3,6 +3,7 @@ package com.example;
 import com.example.api.ElpriserAPI;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Scanner;
 
@@ -54,15 +55,24 @@ public class Main {
             System.out.print("Enter zone (SE1-SE4): ");
             zone = scan.nextLine();
         }
-        System.out.println(zone);
-        System.out.println(date);
-        System.out.println(charging);
         ElpriserAPI.Prisklass prisklass = parsePrisklass(zone);
-        List<ElpriserAPI.Elpris> dagensElPriser = elpriserAPI.getPriser(date, prisklass);
-        double mean = dagensElPriser.stream().mapToDouble(ElpriserAPI.Elpris::sekPerKWh).average().orElse(0);
+        List<ElpriserAPI.Elpris> allaElPriser = elpriserAPI.getPriser(date, prisklass);
+        if (LocalDateTime.now().getHour() >= 13 || LocalDate.parse(date).toEpochDay() < LocalDate.now().toEpochDay()) {
+            LocalDate tomorrow = LocalDate.parse(date).plusDays(1);
+            List<ElpriserAPI.Elpris> morgondagensElpriser = elpriserAPI.getPriser(tomorrow, prisklass);
+            allaElPriser.addAll(morgondagensElpriser);
+        }
+
+        double mean = allaElPriser.stream().mapToDouble(ElpriserAPI.Elpris::sekPerKWh).average().orElse(0);
         String formatted = String.format("%.2f", mean * 100);
-        System.out.println("Dagens medelpris är : " + formatted + " öre");
-        System.out.println(dagensElPriser);
+        if (allaElPriser.isEmpty()) {
+            System.out.println("Inga priser tillgängliga.");
+            return;
+        } else {
+            System.out.println("Dagens medelpris är: " + String.format("%.2f", mean * 100) + " öre");
+        }
+
+        System.out.println(allaElPriser);
     }
 
     private static ElpriserAPI.Prisklass parsePrisklass (String s) {
