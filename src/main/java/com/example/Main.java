@@ -4,7 +4,9 @@ import com.example.api.ElpriserAPI;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.Scanner;
 
 public class Main {
@@ -62,26 +64,28 @@ public class Main {
             List<ElpriserAPI.Elpris> morgondagensElpriser = elpriserAPI.getPriser(tomorrow, prisklass);
             allaElPriser.addAll(morgondagensElpriser);
         }
-
         double mean = allaElPriser.stream().mapToDouble(ElpriserAPI.Elpris::sekPerKWh).average().orElse(0);
-        String formatted = String.format("%.2f", mean * 100);
         if (allaElPriser.isEmpty()) {
             System.out.println("Inga priser tillgängliga.");
             return;
         } else {
+            ElpriserAPI.Elpris maxElpris = allaElPriser.stream().max(Comparator.comparingDouble(ElpriserAPI.Elpris::sekPerKWh)).get();
+            ElpriserAPI.Elpris minElpris = allaElPriser.stream().min(Comparator.comparingDouble(ElpriserAPI.Elpris::sekPerKWh)).get();
             System.out.println("Dagens medelpris är: " + String.format("%.2f", mean * 100) + " öre");
+            System.out.println("Dagens maxpris är: " + String.format("%.2f", maxElpris.sekPerKWh() * 100) + " öre vid klockan " + maxElpris.timeStart());
+            System.out.println("Dagens minpris är: " + String.format("%.2f", minElpris.sekPerKWh() * 100) + " öre vid klockan " + minElpris.timeStart());
         }
-
         System.out.println(allaElPriser);
     }
 
-    private static ElpriserAPI.Prisklass parsePrisklass (String s) {
-        return switch (s){
+    private static ElpriserAPI.Prisklass parsePrisklass(String s) {
+        return switch (s) {
             case "SE1" -> ElpriserAPI.Prisklass.SE1;
             case "SE2" -> ElpriserAPI.Prisklass.SE2;
             case "SE3" -> ElpriserAPI.Prisklass.SE3;
             case "SE4" -> ElpriserAPI.Prisklass.SE4;
-            default -> throw new RuntimeException("Invalid zone: use SE1, SE2, SE3, or SE4. "+ s + " is unknown prisklass");
+            default ->
+                    throw new RuntimeException("Invalid zone: use SE1, SE2, SE3, or SE4. " + s + " is unknown prisklass");
         };
     }
 }
