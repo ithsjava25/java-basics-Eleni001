@@ -32,7 +32,16 @@ public class Main {
                 }
                 case "--sorted" -> sorted = true;
                 case "--help" -> {
-                    System.out.println("help");
+                    System.out.println("""
+                            \nUsage: java Main --zone <SE1|SE2|SE3|SE4> [--date YYYY-MM-DD] [--sorted] [--charging 2h|4h|8h] [--help]
+                            \n Expected Command-Line Arguments:
+                            * --zone SE1|SE2|SE3|SE4 (required)
+                            * --date YYYY-MM-DD (optional, defaults to current date)
+                            * --sorted (optional, to display prices in descending order)
+                            * --charging 2h|4h|8h (optional, to find optimal charging windows)
+                            * --help (optional, to display usage information)
+                            \nExample: java -cp target/classes com.example.Main --zone SE3 --date 2025-09-04
+                            """);
                     System.exit(0);
                 }
                 default -> {
