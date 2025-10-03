@@ -2,13 +2,16 @@ package com.example;
 
 import com.example.api.ElpriserAPI;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public class Main {
     public static void main(String[] args) {
         ElpriserAPI elpriserAPI = new ElpriserAPI();
         String zone = "";
-        String date = "";
+        String date = LocalDate.now().toString();
+        String charging = "";
+        boolean sorted = false;
 
         for (int i = 0; i < args.length; i++) {
             System.out.println(args[i]);
@@ -19,9 +22,22 @@ public class Main {
                 date = args[i + 1];
                 i++;
             }
+            else if (args[i] .equals("--charging")) {
+                charging = args[i + 1];
+                i++;
+            } else if (args[i] .equals("--sorted")) {
+                sorted = true;
+            } else if (args[i].equals("--help")) {
+                System.out.println("help");
+                System.exit(0);
+            } else {
+                System.out.println("Unknown command argument");
+                System.exit(64);
+            }
         }
         System.out.println(zone);
         System.out.println(date);
+        System.out.println(charging);
         ElpriserAPI.Prisklass prisklass = parsePrisklass(zone);
         List<ElpriserAPI.Elpris> dagensElPriser = elpriserAPI.getPriser(date, prisklass);
         System.out.println(dagensElPriser);
