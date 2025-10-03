@@ -14,25 +14,29 @@ public class Main {
         boolean sorted = false;
 
         for (int i = 0; i < args.length; i++) {
-            System.out.println(args[i]);
-            if (args[i] .equals("--zone")) {
-                zone = args[i + 1];
-                i++;
-            } else if (args[i] .equals("--date")) {
-                date = args[i + 1];
-                i++;
-            }
-            else if (args[i] .equals("--charging")) {
-                charging = args[i + 1];
-                i++;
-            } else if (args[i] .equals("--sorted")) {
-                sorted = true;
-            } else if (args[i].equals("--help")) {
-                System.out.println("help");
-                System.exit(0);
-            } else {
-                System.out.println("Unknown command argument");
-                System.exit(64);
+
+            switch (args[i]) {
+                case "--zone" -> {
+                    zone = args[i + 1];
+                    i++;
+                }
+                case "--date" -> {
+                    date = args[i + 1];
+                    i++;
+                }
+                case "--charging" -> {
+                    charging = args[i + 1];
+                    i++;
+                }
+                case "--sorted" -> sorted = true;
+                case "--help" -> {
+                    System.out.println("help");
+                    System.exit(0);
+                }
+                default -> {
+                    System.out.println("Unknown command argument");
+                    System.exit(64);
+                }
             }
         }
         System.out.println(zone);
@@ -40,6 +44,9 @@ public class Main {
         System.out.println(charging);
         ElpriserAPI.Prisklass prisklass = parsePrisklass(zone);
         List<ElpriserAPI.Elpris> dagensElPriser = elpriserAPI.getPriser(date, prisklass);
+        double mean = dagensElPriser.stream().mapToDouble(ElpriserAPI.Elpris::sekPerKWh).average().orElse(0);
+        String formatted = String.format("%.2f", mean * 100);
+        System.out.println("Dagens medelpris: " + formatted + " öre");
         System.out.println(dagensElPriser);
     }
 
