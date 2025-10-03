@@ -4,6 +4,7 @@ import com.example.api.ElpriserAPI;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Scanner;
 
 public class Main {
     public static void main(String[] args) {
@@ -12,6 +13,7 @@ public class Main {
         String date = LocalDate.now().toString();
         String charging = "";
         boolean sorted = false;
+        Scanner scan = new Scanner(System.in);
 
         for (int i = 0; i < args.length; i++) {
 
@@ -39,6 +41,10 @@ public class Main {
                 }
             }
         }
+        if (zone.isEmpty()) {
+            System.out.print("Enter zone (SE1-SE4): ");
+            zone = scan.nextLine();
+        }
         System.out.println(zone);
         System.out.println(date);
         System.out.println(charging);
@@ -46,7 +52,7 @@ public class Main {
         List<ElpriserAPI.Elpris> dagensElPriser = elpriserAPI.getPriser(date, prisklass);
         double mean = dagensElPriser.stream().mapToDouble(ElpriserAPI.Elpris::sekPerKWh).average().orElse(0);
         String formatted = String.format("%.2f", mean * 100);
-        System.out.println("Dagens medelpris: " + formatted + " öre");
+        System.out.println("Dagens medelpris är : " + formatted + " öre");
         System.out.println(dagensElPriser);
     }
 
@@ -56,7 +62,7 @@ public class Main {
             case "SE2" -> ElpriserAPI.Prisklass.SE2;
             case "SE3" -> ElpriserAPI.Prisklass.SE3;
             case "SE4" -> ElpriserAPI.Prisklass.SE4;
-            default -> throw new RuntimeException("Unknown Prisklass " + s);
+            default -> throw new RuntimeException("Invalid zone: use SE1, SE2, SE3, or SE4. "+ s + " is unknown prisklass");
         };
     }
 }
