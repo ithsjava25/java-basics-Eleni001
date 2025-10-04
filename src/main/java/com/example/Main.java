@@ -19,7 +19,6 @@ public class Main {
         Scanner scan = new Scanner(System.in);
 
         for (int i = 0; i < args.length; i++) {
-
             switch (args[i]) {
                 case "--zone" -> {
                     zone = args[i + 1];
@@ -57,7 +56,7 @@ public class Main {
         if (!zone.isEmpty()) {
             prisklass = parsePrisklass(zone);
         }
-        while (prisklass == null) {
+        if (prisklass == null) {
             System.out.print("Ange zone (SE1-SE4): ");
             zone = scan.nextLine();
             prisklass = parsePrisklass(zone);
