@@ -34,28 +34,23 @@ public class Main {
                 }
                 case "--sorted" -> sorted = true;
                 case "--help" -> {
-                    System.out.println("""
-                            \nUsage: java Main --zone <SE1|SE2|SE3|SE4> [--date YYYY-MM-DD] [--sorted] [--charging 2h|4h|8h] [--help]
-                            \n Expected Command-Line Arguments:
-                            * --zone SE1|SE2|SE3|SE4 (required)
-                            * --date YYYY-MM-DD (optional, defaults to current date)
-                            * --sorted (optional, to display prices in descending order)
-                            * --charging 2h|4h|8h (optional, to find optimal charging windows)
-                            * --help (optional, to display usage information)
-                            \nExample: java -cp target/classes com.example.Main --zone SE3 --date 2025-09-04
-                            """);
-                    System.exit(0);
+                    usage();
+                    return;
                 }
                 default -> {
                     System.out.println("Okänd kommandoargument");
-                    System.exit(64);
+                    usage();
+                    return;
                 }
             }
         }
-        ElpriserAPI.Prisklass prisklass = null;
-        if (!zone.isEmpty()) {
-            prisklass = parsePrisklass(zone);
+        ElpriserAPI.Prisklass prisklass = parsePrisklass(zone);
+        if (prisklass == null) {
+            System.out.println("Okänd prisklass" + zone);
+            usage();
+            return;
         }
+        /* Make unit test break, despite being asked by the AI to add it :-(
         if (prisklass == null) {
             System.out.print("Ange zone (SE1-SE4): ");
             zone = scan.nextLine();
@@ -64,6 +59,7 @@ public class Main {
                 System.out.println("Okänd prisklass");
             }
         }
+         */
         List<ElpriserAPI.Elpris> allaElPriser = elpriserAPI.getPriser(date, prisklass);
         if (LocalDateTime.now().getHour() >= 13  /* LocalDate.parse(date).toEpochDay() < LocalDate.now().toEpochDay()*/) {
             LocalDate tomorrow = LocalDate.parse(date).plusDays(1);
@@ -93,4 +89,18 @@ public class Main {
             default -> null;
         };
     }
+
+    private static void usage() {
+        System.out.println("""
+                \nUsage: java Main --zone <SE1|SE2|SE3|SE4> [--date YYYY-MM-DD] [--sorted] [--charging 2h|4h|8h] [--help]
+                \n Expected Command-Line Arguments:
+                * --zone SE1|SE2|SE3|SE4 (required)
+                * --date YYYY-MM-DD (optional, defaults to current date)
+                * --sorted (optional, to display prices in descending order)
+                * --charging 2h|4h|8h (optional, to find optimal charging windows)
+                * --help (optional, to display usage information)
+                \nExample: java -cp target/classes com.example.Main --zone SE3 --date 2025-09-04
+                """);
+    }
+
 }
