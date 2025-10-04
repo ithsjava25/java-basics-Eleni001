@@ -66,7 +66,7 @@ public class Main {
             }
         }
         List<ElpriserAPI.Elpris> allaElPriser = elpriserAPI.getPriser(date, prisklass);
-        if (LocalDateTime.now().getHour() >= 13 || LocalDate.parse(date).toEpochDay() < LocalDate.now().toEpochDay()) {
+        if (LocalDateTime.now().getHour() >= 13  /* LocalDate.parse(date).toEpochDay() < LocalDate.now().toEpochDay()*/) {
             LocalDate tomorrow = LocalDate.parse(date).plusDays(1);
             List<ElpriserAPI.Elpris> morgondagensElpriser = elpriserAPI.getPriser(tomorrow, prisklass);
             allaElPriser.addAll(morgondagensElpriser);
