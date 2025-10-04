@@ -48,16 +48,23 @@ public class Main {
                     System.exit(0);
                 }
                 default -> {
-                    System.out.println("Unknown command argument");
+                    System.out.println("Okänd kommandoargument");
                     System.exit(64);
                 }
             }
         }
-        if (zone.isEmpty()) {
-            System.out.print("Enter zone (SE1-SE4): ");
-            zone = scan.nextLine();
+        ElpriserAPI.Prisklass prisklass = null;
+        if (!zone.isEmpty()) {
+            prisklass = parsePrisklass(zone);
         }
-        ElpriserAPI.Prisklass prisklass = parsePrisklass(zone);
+        while (prisklass == null) {
+            System.out.print("Ange zone (SE1-SE4): ");
+            zone = scan.nextLine();
+            prisklass = parsePrisklass(zone);
+            if (prisklass == null) {
+                System.out.println("Okänd prisklass");
+            }
+        }
         List<ElpriserAPI.Elpris> allaElPriser = elpriserAPI.getPriser(date, prisklass);
         if (LocalDateTime.now().getHour() >= 13 || LocalDate.parse(date).toEpochDay() < LocalDate.now().toEpochDay()) {
             LocalDate tomorrow = LocalDate.parse(date).plusDays(1);
@@ -84,8 +91,7 @@ public class Main {
             case "SE2" -> ElpriserAPI.Prisklass.SE2;
             case "SE3" -> ElpriserAPI.Prisklass.SE3;
             case "SE4" -> ElpriserAPI.Prisklass.SE4;
-            default ->
-                    throw new RuntimeException("Invalid zone: use SE1, SE2, SE3, or SE4. " + s + " is unknown prisklass");
+            default -> null;
         };
     }
 }
