@@ -5,8 +5,10 @@ import com.example.api.ElpriserAPI;
 import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.AbstractMap.SimpleEntry;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Scanner;
@@ -78,14 +80,14 @@ public class Main {
             List<ElpriserAPI.Elpris> morgondagensElpriser = elpriserAPI.getPriser(tomorrow, prisklass);
             allaElPriser.addAll(morgondagensElpriser);
         }
-        var elpriserPerTimme = allaElPriser.stream().map(elp -> new SimpleEntry<>(elp.timeStart().truncatedTo(ChronoUnit.HOURS), elp))
+        List<ElpriserAPI.Elpris> elpriserPerTimme = allaElPriser.stream().map(elp -> new SimpleEntry<>(elp.timeStart().truncatedTo(ChronoUnit.HOURS), elp))
                 .collect(Collectors.groupingBy(SimpleEntry::getKey, toList())).entrySet().stream().map(y ->
                         new ElpriserAPI.Elpris(
                                 y.getValue().stream().mapToDouble(
                                         z -> z.getValue().sekPerKWh()).average().orElse(0),
                                 y.getValue().stream().mapToDouble(
                                         z -> z.getValue().eurPerKWh()).average().orElse(0),
-                                0, y.getKey(),
+                                0 , y.getKey(),
                                 y.getKey().plusHours(1)
                         )).sorted(Comparator.comparing(ElpriserAPI.Elpris::timeStart)).toList();
 
@@ -101,11 +103,46 @@ public class Main {
             System.out.println("Dagens högsta pris är: " + String.format("%.2f", maxElpris.sekPerKWh() * 100) + " öre vid klockan " + maxElpris.timeStart());
             System.out.println("Dagens lägsta pris är: " + String.format("%.2f", minElpris.sekPerKWh() * 100) + " öre vid klockan " + minElpris.timeStart());
         }
+        List<SimpleEntry<ZonedDateTime, Double>> twoHoursAverages = new ArrayList<>();
+        List<SimpleEntry<ZonedDateTime, Double>> fourHoursAverages = new ArrayList<>();
+        List<SimpleEntry<ZonedDateTime, Double>> eightHoursAverages = new ArrayList<>();
+        if (!charging.isEmpty()) {
+            for (int i = 0; i < allaElPriser.size(); i++) {
+                double costForPeriod4h = averageElpris(elpriserPerTimme.subList(i, Math.min(i + 4, allaElPriser.size())));
+                double costForPeriod2h = averageElpris(elpriserPerTimme.subList(i, Math.min(i + 2, allaElPriser.size())));
+                double costForPeriod8h = averageElpris(elpriserPerTimme.subList(i, Math.min(i + 8, allaElPriser.size())));
+                twoHoursAverages.add(new SimpleEntry<>(allaElPriser.get(i).timeStart(), costForPeriod2h));
+                fourHoursAverages.add(new SimpleEntry<>(allaElPriser.get(i).timeStart(), costForPeriod4h));
+                eightHoursAverages.add(new SimpleEntry<>(allaElPriser.get(i).timeStart(), costForPeriod8h));
+            }
+            switch (charging) {
+                case "2h" -> printfCheapestCharging(twoHoursAverages);
+                case "4h" -> printfCheapestCharging(fourHoursAverages);
+                case "8h" -> printfCheapestCharging(eightHoursAverages);
+                default -> {
+                    System.out.println("unknown charging period: " + charging);
+                    return;
+                }
+            }
+        }
         if (sorted) {
             elpriserPerTimme.stream().sorted(Comparator.comparingDouble(ElpriserAPI.Elpris::sekPerKWh).reversed()).forEach(Main::displayPrice);
         } else {
             elpriserPerTimme.forEach(Main::displayPrice);
         }
+    }
+
+    private static void printfCheapestCharging(List<SimpleEntry<ZonedDateTime, Double>> twoHoursAverages) {
+        SimpleEntry<ZonedDateTime, Double> cheapest = getCheapest(twoHoursAverages);
+        System.out.printf("Påbörja laddning kl %02d:%02d - Medelpris för fönster: %.2f öre per timme", cheapest.getKey().getHour(), cheapest.getKey().getMinute(), cheapest.getValue() * 100);
+    }
+
+    private static SimpleEntry<ZonedDateTime, Double> getCheapest(List<SimpleEntry<ZonedDateTime, Double>> twoHoursAverages) {
+        return twoHoursAverages.stream().min(Comparator.comparingDouble(SimpleEntry::getValue)).get();
+    }
+
+    private static double averageElpris(List<ElpriserAPI.Elpris> elpriser) {
+        return elpriser.stream().mapToDouble(ElpriserAPI.Elpris::sekPerKWh).average().orElse(0);
     }
 
     private static ElpriserAPI.Prisklass parsePrisklass(String s) {
