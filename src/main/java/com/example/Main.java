@@ -98,9 +98,9 @@ public class Main {
         } else {
             ElpriserAPI.Elpris maxElpris = elpriserPerTimme.stream().max(Comparator.comparingDouble(ElpriserAPI.Elpris::sekPerKWh)).get();
             ElpriserAPI.Elpris minElpris = elpriserPerTimme.stream().min(Comparator.comparingDouble(ElpriserAPI.Elpris::sekPerKWh)).get();
-            System.out.println("Medelpris: " + String.format("%.2f", mean * 100) + " öre");
-            System.out.println("Dagens högsta pris är: " + String.format("%.2f", maxElpris.sekPerKWh() * 100) + " öre vid klockan " + maxElpris.timeStart());
-            System.out.println("Dagens lägsta pris är: " + String.format("%.2f", minElpris.sekPerKWh() * 100) + " öre vid klockan " + minElpris.timeStart());
+            System.out.println("Medelpris: " + formatOre(mean) + " öre");
+            System.out.println("Dagens högsta pris är: " + formatOre(maxElpris.sekPerKWh()) + " öre vid klockan " + maxElpris.timeStart());
+            System.out.println("Dagens lägsta pris är: " + formatOre(minElpris.sekPerKWh()) + " öre vid klockan " + minElpris.timeStart());
         }
         List<SimpleEntry<ZonedDateTime, Double>> twoHoursAverages = new ArrayList<>();
         List<SimpleEntry<ZonedDateTime, Double>> fourHoursAverages = new ArrayList<>();
