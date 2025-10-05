@@ -1,1 +1,182 @@
--
+package com.example;
+
+import com.example.api.ElpriserAPI;
+
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
+import java.time.DateTimeException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
+import java.util.AbstractMap.SimpleEntry;
+import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.toList;
+
+public class Main {
+    public static void main(String[] args) {
+        ElpriserAPI elpriserAPI = new ElpriserAPI();
+        String zone = "";
+        String date = LocalDate.now().toString();
+        String charging = "";
+        boolean sorted = false;
+        Scanner scan = new Scanner(System.in);
+
+        for (int i = 0; i < args.length; i++) {
+            switch (args[i]) {
+                case "--zone" -> {
+                    zone = args[i + 1];
+                    i++;
+                }
+                case "--date" -> {
+                    date = args[i + 1];
+                    i++;
+                }
+                case "--charging" -> {
+                    charging = args[i + 1];
+                    i++;
+                }
+                case "--sorted" -> sorted = true;
+                case "--help" -> {
+                    usage();
+                    return;
+                }
+                default -> {
+                    System.out.println("Okänd kommandoargument");
+                    usage();
+                    return;
+                }
+            }
+        }
+        ElpriserAPI.Prisklass prisklass = parsePrisklass(zone);
+        if (prisklass == null) {
+            System.out.println("Ogiltig zon" + zone);
+            usage();
+            return;
+        }
+        /* Make unit test break, despite being asked by the AI to add it :-(
+        if (prisklass == null) {
+            System.out.print("Ange zone (SE1-SE4): ");
+            zone = scan.nextLine();
+            prisklass = parsePrisklass(zone);
+            if (prisklass == null) {
+                System.out.println("Okänd prisklass");
+            }
+        }
+         */
+        try {
+            LocalDate.parse(date);
+        } catch (DateTimeException e) {
+            System.out.println("ogiltigt datum: " + date);
+            usage();
+            return;
+        }
+        List<ElpriserAPI.Elpris> allaElPriser = elpriserAPI.getPriser(date, prisklass);
+        if (LocalDateTime.now().getHour() >= 13 || LocalDate.parse(date).toEpochDay() < LocalDate.now().toEpochDay()) {
+            LocalDate tomorrow = LocalDate.parse(date).plusDays(1);
+            List<ElpriserAPI.Elpris> morgondagensElpriser = elpriserAPI.getPriser(tomorrow, prisklass);
+            allaElPriser.addAll(morgondagensElpriser);
+        }
+        List<ElpriserAPI.Elpris> elpriserPerTimme = allaElPriser.stream().map(elp -> new SimpleEntry<>(elp.timeStart().truncatedTo(ChronoUnit.HOURS), elp))
+                .collect(Collectors.groupingBy(SimpleEntry::getKey, toList())).entrySet().stream().map(y ->
+                        new ElpriserAPI.Elpris(
+                                y.getValue().stream().mapToDouble(
+                                        z -> z.getValue().sekPerKWh()).average().orElse(0),
+                                y.getValue().stream().mapToDouble(
+                                        z -> z.getValue().eurPerKWh()).average().orElse(0),
+                                0, y.getKey(),
+                                y.getKey().plusHours(1)
+                        )).sorted(Comparator.comparing(ElpriserAPI.Elpris::timeStart)).toList();
+
+
+        double mean = allaElPriser.stream().mapToDouble(ElpriserAPI.Elpris::sekPerKWh).average().orElse(0);
+        if (allaElPriser.isEmpty()) {
+            System.out.println("Inga priser tillgängliga.");
+            return;
+        } else {
+            ElpriserAPI.Elpris maxElpris = elpriserPerTimme.stream().max(Comparator.comparingDouble(ElpriserAPI.Elpris::sekPerKWh)).get();
+            ElpriserAPI.Elpris minElpris = elpriserPerTimme.stream().min(Comparator.comparingDouble(ElpriserAPI.Elpris::sekPerKWh)).get();
+            System.out.println("Medelpris: " + formatOre(mean) + " öre");
+            System.out.println("Dagens högsta pris är: " + formatOre(maxElpris.sekPerKWh()) + " öre vid klockan " + maxElpris.timeStart());
+            System.out.println("Dagens lägsta pris är: " + formatOre(minElpris.sekPerKWh()) + " öre vid klockan " + minElpris.timeStart());
+        }
+        List<SimpleEntry<ZonedDateTime, Double>> twoHoursAverages = new ArrayList<>();
+        List<SimpleEntry<ZonedDateTime, Double>> fourHoursAverages = new ArrayList<>();
+        List<SimpleEntry<ZonedDateTime, Double>> eightHoursAverages = new ArrayList<>();
+        if (!charging.isEmpty()) {
+            for (int i = 0; i < allaElPriser.size(); i++) {
+                double costForPeriod4h = averageElpris(elpriserPerTimme.subList(i, Math.min(i + 4, allaElPriser.size())));
+                double costForPeriod2h = averageElpris(elpriserPerTimme.subList(i, Math.min(i + 2, allaElPriser.size())));
+                double costForPeriod8h = averageElpris(elpriserPerTimme.subList(i, Math.min(i + 8, allaElPriser.size())));
+                twoHoursAverages.add(new SimpleEntry<>(allaElPriser.get(i).timeStart(), costForPeriod2h));
+                fourHoursAverages.add(new SimpleEntry<>(allaElPriser.get(i).timeStart(), costForPeriod4h));
+                eightHoursAverages.add(new SimpleEntry<>(allaElPriser.get(i).timeStart(), costForPeriod8h));
+            }
+            switch (charging) {
+                case "2h" -> printfCheapestCharging(twoHoursAverages);
+                case "4h" -> printfCheapestCharging(fourHoursAverages);
+                case "8h" -> printfCheapestCharging(eightHoursAverages);
+                default -> {
+                    System.out.println("unknown charging period: " + charging);
+                    return;
+                }
+            }
+        }
+        if (sorted) {
+            elpriserPerTimme.stream().sorted(Comparator.comparingDouble(ElpriserAPI.Elpris::sekPerKWh).reversed()).forEach(Main::displayPrice);
+        } else {
+            elpriserPerTimme.forEach(Main::displayPrice);
+        }
+    }
+
+    private static void printfCheapestCharging(List<SimpleEntry<ZonedDateTime, Double>> twoHoursAverages) {
+        SimpleEntry<ZonedDateTime, Double> cheapest = getCheapest(twoHoursAverages);
+        System.out.printf("Påbörja laddning kl %02d:%02d - Medelpris för fönster: %s öre per timme", cheapest.getKey().getHour(), cheapest.getKey().getMinute(), formatOre(cheapest.getValue()));
+    }
+
+    private static SimpleEntry<ZonedDateTime, Double> getCheapest(List<SimpleEntry<ZonedDateTime, Double>> twoHoursAverages) {
+        return twoHoursAverages.stream().min(Comparator.comparingDouble(SimpleEntry::getValue)).get();
+    }
+
+    private static double averageElpris(List<ElpriserAPI.Elpris> elpriser) {
+        return elpriser.stream().mapToDouble(ElpriserAPI.Elpris::sekPerKWh).average().orElse(0);
+    }
+
+    private static ElpriserAPI.Prisklass parsePrisklass(String s) {
+        return switch (s) {
+            case "SE1" -> ElpriserAPI.Prisklass.SE1;
+            case "SE2" -> ElpriserAPI.Prisklass.SE2;
+            case "SE3" -> ElpriserAPI.Prisklass.SE3;
+            case "SE4" -> ElpriserAPI.Prisklass.SE4;
+            default -> null;
+        };
+    }
+
+    private static void usage() {
+        System.out.println("""
+                \nUsage: java Main --zone <SE1|SE2|SE3|SE4> [--date YYYY-MM-DD] [--sorted] [--charging 2h|4h|8h] [--help]
+                \n Expected Command-Line Arguments:
+                * --zone SE1|SE2|SE3|SE4 (required)
+                * --date YYYY-MM-DD (optional, defaults to current date)
+                * --sorted (optional, to display prices in descending order)
+                * --charging 2h|4h|8h (optional, to find optimal charging windows)
+                * --help (optional, to display usage information)
+                \nExample: java -cp target/classes com.example.Main --zone SE3 --date 2025-09-04
+                """);
+    }
+
+    private static void displayPrice(ElpriserAPI.Elpris elpris) {
+        System.out.printf("%02d-%02d %s öre%n", elpris.timeStart().getHour(), elpris.timeEnd().getHour(), formatOre(elpris.sekPerKWh()));
+    }
+
+    private static String formatOre(double sekPerKWh) {
+        double ore = sekPerKWh * 100.0;
+        DecimalFormatSymbols symbols = new DecimalFormatSymbols(new Locale("sv", "SE"));
+        DecimalFormat df = new DecimalFormat("0.00", symbols);
+        return df.format(ore);
+    }
+
+}
+
