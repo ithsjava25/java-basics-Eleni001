@@ -2,6 +2,7 @@ package com.example;
 
 import com.example.api.ElpriserAPI;
 
+import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Comparator;
@@ -46,7 +47,7 @@ public class Main {
         }
         ElpriserAPI.Prisklass prisklass = parsePrisklass(zone);
         if (prisklass == null) {
-            System.out.println("Okänd prisklass" + zone);
+            System.out.println("Ogiltig zon" + zone);
             usage();
             return;
         }
@@ -60,6 +61,13 @@ public class Main {
             }
         }
          */
+        try {
+            LocalDate.parse(date);
+        } catch (DateTimeException e) {
+            System.out.println("ogiltigt datum: " + date);
+            usage();
+            return;
+        }
         List<ElpriserAPI.Elpris> allaElPriser = elpriserAPI.getPriser(date, prisklass);
         if (LocalDateTime.now().getHour() >= 13  ||LocalDate.parse(date).toEpochDay() < LocalDate.now().toEpochDay()) {
             LocalDate tomorrow = LocalDate.parse(date).plusDays(1);
