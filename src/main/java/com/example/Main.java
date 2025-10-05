@@ -61,7 +61,7 @@ public class Main {
         }
          */
         List<ElpriserAPI.Elpris> allaElPriser = elpriserAPI.getPriser(date, prisklass);
-        if (LocalDateTime.now().getHour() >= 13  /* LocalDate.parse(date).toEpochDay() < LocalDate.now().toEpochDay()*/) {
+        if (LocalDateTime.now().getHour() >= 13  ||LocalDate.parse(date).toEpochDay() < LocalDate.now().toEpochDay()) {
             LocalDate tomorrow = LocalDate.parse(date).plusDays(1);
             List<ElpriserAPI.Elpris> morgondagensElpriser = elpriserAPI.getPriser(tomorrow, prisklass);
             allaElPriser.addAll(morgondagensElpriser);
@@ -74,10 +74,14 @@ public class Main {
             ElpriserAPI.Elpris maxElpris = allaElPriser.stream().max(Comparator.comparingDouble(ElpriserAPI.Elpris::sekPerKWh)).get();
             ElpriserAPI.Elpris minElpris = allaElPriser.stream().min(Comparator.comparingDouble(ElpriserAPI.Elpris::sekPerKWh)).get();
             System.out.println("Dagens medelpris är: " + String.format("%.2f", mean * 100) + " öre");
-            System.out.println("Dagens maxpris är: " + String.format("%.2f", maxElpris.sekPerKWh() * 100) + " öre vid klockan " + maxElpris.timeStart());
-            System.out.println("Dagens minpris är: " + String.format("%.2f", minElpris.sekPerKWh() * 100) + " öre vid klockan " + minElpris.timeStart());
+            System.out.println("Dagens högsta pris är: " + String.format("%.2f", maxElpris.sekPerKWh() * 100) + " öre vid klockan " + maxElpris.timeStart());
+            System.out.println("Dagens lägsta pris är: " + String.format("%.2f", minElpris.sekPerKWh() * 100) + " öre vid klockan " + minElpris.timeStart());
         }
-        allaElPriser.forEach(Main::displayPrice);
+        if (sorted) {
+            allaElPriser.stream().sorted(Comparator.comparingDouble(ElpriserAPI.Elpris::sekPerKWh).reversed()).forEach(Main::displayPrice);
+        } else {
+            allaElPriser.forEach(Main::displayPrice);
+        }
     }
 
     private static ElpriserAPI.Prisklass parsePrisklass(String s) {
@@ -104,6 +108,6 @@ public class Main {
     }
 
     private static void displayPrice(ElpriserAPI.Elpris elpris) {
-        System.out.printf("%d-%d %.2f öre%n", elpris.timeStart().getHour(), elpris.timeEnd().getHour(), elpris.sekPerKWh() * 100d);
+        System.out.printf("%02d-%02d %.2f öre%n", elpris.timeStart().getHour(), elpris.timeEnd().getHour(), elpris.sekPerKWh() * 100d);
     }
 }
