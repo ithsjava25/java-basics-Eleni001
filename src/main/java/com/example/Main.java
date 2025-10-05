@@ -2,16 +2,15 @@ package com.example;
 
 import com.example.api.ElpriserAPI;
 
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.*;
 import java.util.AbstractMap.SimpleEntry;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Scanner;
 import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toList;
@@ -87,7 +86,7 @@ public class Main {
                                         z -> z.getValue().sekPerKWh()).average().orElse(0),
                                 y.getValue().stream().mapToDouble(
                                         z -> z.getValue().eurPerKWh()).average().orElse(0),
-                                0 , y.getKey(),
+                                0, y.getKey(),
                                 y.getKey().plusHours(1)
                         )).sorted(Comparator.comparing(ElpriserAPI.Elpris::timeStart)).toList();
 
@@ -134,7 +133,7 @@ public class Main {
 
     private static void printfCheapestCharging(List<SimpleEntry<ZonedDateTime, Double>> twoHoursAverages) {
         SimpleEntry<ZonedDateTime, Double> cheapest = getCheapest(twoHoursAverages);
-        System.out.printf("Påbörja laddning kl %02d:%02d - Medelpris för fönster: %.2f öre per timme", cheapest.getKey().getHour(), cheapest.getKey().getMinute(), cheapest.getValue() * 100);
+        System.out.printf("Påbörja laddning kl %02d:%02d - Medelpris för fönster: %s öre per timme", cheapest.getKey().getHour(), cheapest.getKey().getMinute(), formatOre(cheapest.getValue()));
     }
 
     private static SimpleEntry<ZonedDateTime, Double> getCheapest(List<SimpleEntry<ZonedDateTime, Double>> twoHoursAverages) {
@@ -169,7 +168,15 @@ public class Main {
     }
 
     private static void displayPrice(ElpriserAPI.Elpris elpris) {
-        System.out.printf("%02d-%02d %.2f öre%n", elpris.timeStart().getHour(), elpris.timeEnd().getHour(), elpris.sekPerKWh() * 100d);
+        System.out.printf("%02d-%02d %s öre%n", elpris.timeStart().getHour(), elpris.timeEnd().getHour(), formatOre(elpris.sekPerKWh()));
     }
+
+    private static String formatOre(double sekPerKWh) {
+        double ore = sekPerKWh * 100.0;
+        DecimalFormatSymbols symbols = new DecimalFormatSymbols(new Locale("sv", "SE"));
+        DecimalFormat df = new DecimalFormat("0.00", symbols);
+        return df.format(ore);
+    }
+
 }
 
