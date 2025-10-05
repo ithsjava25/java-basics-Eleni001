@@ -172,3 +172,4 @@ public class Main {
         System.out.printf("%02d-%02d %.2f öre%n", elpris.timeStart().getHour(), elpris.timeEnd().getHour(), elpris.sekPerKWh() * 100d);
     }
 }
+
