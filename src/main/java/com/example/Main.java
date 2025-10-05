@@ -5,10 +5,14 @@ import com.example.api.ElpriserAPI;
 import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.AbstractMap.SimpleEntry;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 import java.util.Scanner;
+import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.toList;
 
 public class Main {
     public static void main(String[] args) {
@@ -69,26 +73,38 @@ public class Main {
             return;
         }
         List<ElpriserAPI.Elpris> allaElPriser = elpriserAPI.getPriser(date, prisklass);
-        if (LocalDateTime.now().getHour() >= 13  ||LocalDate.parse(date).toEpochDay() < LocalDate.now().toEpochDay()) {
+        if (LocalDateTime.now().getHour() >= 13 || LocalDate.parse(date).toEpochDay() < LocalDate.now().toEpochDay()) {
             LocalDate tomorrow = LocalDate.parse(date).plusDays(1);
             List<ElpriserAPI.Elpris> morgondagensElpriser = elpriserAPI.getPriser(tomorrow, prisklass);
             allaElPriser.addAll(morgondagensElpriser);
         }
+        var elpriserPerTimme = allaElPriser.stream().map(elp -> new SimpleEntry<>(elp.timeStart().truncatedTo(ChronoUnit.HOURS), elp))
+                .collect(Collectors.groupingBy(SimpleEntry::getKey, toList())).entrySet().stream().map(y ->
+                        new ElpriserAPI.Elpris(
+                                y.getValue().stream().mapToDouble(
+                                        z -> z.getValue().sekPerKWh()).average().orElse(0),
+                                y.getValue().stream().mapToDouble(
+                                        z -> z.getValue().eurPerKWh()).average().orElse(0),
+                                0, y.getKey(),
+                                y.getKey().plusHours(1)
+                        )).sorted(Comparator.comparing(ElpriserAPI.Elpris::timeStart)).toList();
+
+
         double mean = allaElPriser.stream().mapToDouble(ElpriserAPI.Elpris::sekPerKWh).average().orElse(0);
         if (allaElPriser.isEmpty()) {
             System.out.println("Inga priser tillgängliga.");
             return;
         } else {
-            ElpriserAPI.Elpris maxElpris = allaElPriser.stream().max(Comparator.comparingDouble(ElpriserAPI.Elpris::sekPerKWh)).get();
-            ElpriserAPI.Elpris minElpris = allaElPriser.stream().min(Comparator.comparingDouble(ElpriserAPI.Elpris::sekPerKWh)).get();
-            System.out.println("Dagens medelpris är: " + String.format("%.2f", mean * 100) + " öre");
+            ElpriserAPI.Elpris maxElpris = elpriserPerTimme.stream().max(Comparator.comparingDouble(ElpriserAPI.Elpris::sekPerKWh)).get();
+            ElpriserAPI.Elpris minElpris = elpriserPerTimme.stream().min(Comparator.comparingDouble(ElpriserAPI.Elpris::sekPerKWh)).get();
+            System.out.println("Medelpris: " + String.format("%.2f", mean * 100) + " öre");
             System.out.println("Dagens högsta pris är: " + String.format("%.2f", maxElpris.sekPerKWh() * 100) + " öre vid klockan " + maxElpris.timeStart());
             System.out.println("Dagens lägsta pris är: " + String.format("%.2f", minElpris.sekPerKWh() * 100) + " öre vid klockan " + minElpris.timeStart());
         }
         if (sorted) {
-            allaElPriser.stream().sorted(Comparator.comparingDouble(ElpriserAPI.Elpris::sekPerKWh).reversed()).forEach(Main::displayPrice);
+            elpriserPerTimme.stream().sorted(Comparator.comparingDouble(ElpriserAPI.Elpris::sekPerKWh).reversed()).forEach(Main::displayPrice);
         } else {
-            allaElPriser.forEach(Main::displayPrice);
+            elpriserPerTimme.forEach(Main::displayPrice);
         }
     }
 
